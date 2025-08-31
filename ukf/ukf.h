@@ -2,6 +2,7 @@
 #include "matrixSqrt.h"
 #include "posdef.h"
 #include "types.h"
+#include "utils.h"
 
 
 
@@ -9,47 +10,53 @@
 class UKF {
 public:
     // state
-    V9d x;
+    V6d x;
         // global position: x, y, theta
-        // local displacement: dx, dy, dtheta
-        // local velocity: vx, vy, w
+        // global velocities: vx, vy, w
+
     // sigma points
     SigmaPoints sp;
 
     double dt = 0.01; // epoch in seconds
 
-    M9d P;
-    M9d Q;
-    M6d R;
+    M6d P;
+    M6d Q;
+
+    // measurement model:
+        // displacements
+        // dx, dy, dtheta
+        // actual velocities (vx vy only every 40ms)
+        // vx, vy, w
+        // distance sensors range
+        // dl, dr, db
+    M4d R;
 
     UKF() {
-        P = M9d::Identity();
-        P.diagonal() <<
-            0.01, 0.01, 0.01,
-            0.1, 0.1, 0.1,
-            0.5, 0.5, 0.5;
-        // P.block<3, 3>(0, 0) *= 0.01; // displacement initial covariance = 0.5
-        // P.block<3, 3>(3, 3) *= 0.5; // displacement initial covariance = 0.5
-        // P.block<3, 3>(6, 6) *= 1.0; // velocity initial covariance = 1
-        Q = M9d::Zero();
-        Q.diagonal() <<
-            0.1, 0.1, 0.1,
-            0.0001, 0.0001, 0.0001,
-            0.0001, 0.0001, 0.0001;
-        R = M6d::Zero();
+        /*
+        
+
+            ====
+            TRY A COUPLE TIMES MORE THE X ERROR
+            THEN MOVE ON TO SIMULATING ANGLE AND Y DISPLACEMENT
+            ====
+        
+        
+        */
+        P = M6d::Identity() * 0.0001;
+        P(3, 3) = 0.01;
+        P(4, 4) = 0.01;
+
+        R = M4d::Zero();
         R.diagonal() <<
-            0.00003, 0.00003, 0.00003,
-            0.00003, 0.00003, 0.00003;
+            7.5e-7, 7.5e-7, 7.5e-7, 7.5e-7;
         x <<
             0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
             0.0, 0.0, 0.0;
-            // 20.0, -5.0, M_PI / 18.0,
-            // 2.2, -0.4, M_PI / 36.0,
-            // 8.5, 1.2, M_PI / 4.0;
-    };
 
-    bool useVelocity = true;
+        std::cout << "\n\n\n\nSigma points scale: " << sp.scale << std::endl;
+        std::cout << "Initial covariance trace: " << P.trace() << std::endl;
+        std::cout << "Initial covariance norm: " << P.norm() << std::endl << std::endl << std::endl;
+    };
 
 
     /*
@@ -60,110 +67,108 @@ public:
     
     */
     auto
-    updatev(const V6d &z) {
-        useVelocity = true;
+    update(const V4d &z) {
         auto sigmaPts = generateSigmaPoints();
 
-        V6d meanZ = V6d::Zero();
+        V4d meanZ = V4d::Zero();
 
-        MV6d sigmasZ = MV6d::Zero();
+        MV4d sigmasZ = MV4d::Zero();
+        // std::cout << "\n\nMeasurements from sigma points: " << std::endl;
         for(int i = 0; i < sp.nps; i++) {
             sigmasZ.col(i) = measurementModel(sigmaPts.col(i));
+
+            // std::cout << "\t(" << i + 1 << ") ";
+            // formatMatrix(sigmasZ.col(i).transpose());
+
             meanZ += sp.getw(i) * sigmasZ.col(i);
         }
 
-        M6d Pz = R;
-        MPxyKd Pxy = MPxyKd::Zero();
+        // std::cout << "\n\nMean Z at update step: " << std::endl;
+        // formatMatrix(meanZ);
+
+        M4d Pz = R.eval();
+        M6x4 Pxy = M6x4::Zero();
         for(int i = 0; i < sp.nps; i++) {
-            V6d error = sigmasZ.col(i) - meanZ;
+            V4d error = sigmasZ.col(i) - meanZ;
             Pz += sp.getPw(i) * error * error.transpose();
-            V9d meanError = sigmaPts.col(i) - x;
+            V6d meanError = sigmaPts.col(i) - x;
             Pxy += sp.getPw(i) * meanError * error.transpose();
         }
 
 
-
-        Pz = 0.5 * (Pz + Pz.transpose());
         Pz = ensurePositiveDefinite(Pz);
+        Pz = 0.5 * (Pz + Pz.transpose());
 
+        // std::cout << "\n\nInnovation covariance:" << std::endl;
+        // formatMatrix(Pz);
 
-        V6d y = z - meanZ;
-        MPxyKd K = computeKalmanGain(Pxy, Pz);
+        // std::cout << "\n\nCross covariance" << std::endl;
+        // formatMatrix(Pxy);
+        
+        
+        V4d y = z - meanZ;
+        M6x4 K = computeKalmanGain(Pxy, Pz);
+
+        // std::cout << "\n\nInnovation:" << std::endl;
+        // formatMatrix(y);
+
+        std::cout << "\n\nKalman gain:" << std::endl;
+        formatMatrix(K);
 
         x += K * y;
 
 
-        M9d KPzKt = K * Pz * K.transpose();
-        M9d newP = P - KPzKt;
+        M6d KPzKt = K * Pz * K.transpose();
+        M6d newP = P - KPzKt;
         newP = 0.5 * (newP + newP.transpose());
 
         P = ensurePositiveDefinite(newP);
 
-        // std::cout << x.transpose() << std::endl;
-        std::cout << x(0) << "\t" << x(3) << "\t" << x(6) << std::endl;
-        // std::cout << P << std::endl << std::endl;
-
-        return x;
-    }
-    // no velocity update
-    auto
-    updated(const V3d &z) {
-        useVelocity = false;
-        auto sigmaPts = generateSigmaPoints();
-
-        V3d meanZ = V3d::Zero();
-
-        MV3d sigmasZ = MV3d::Zero();
-        for(int i = 0; i < sp.nps; i++) {
-            sigmasZ.col(i) = measurementModelDisplacement(sigmaPts.col(i));
-            meanZ += sp.getw(i) * sigmasZ.col(i);
-        }
-
-        M3d Pz = R.block<3, 3>(0, 0);
-        MPxyK3d Pxy = MPxyK3d::Zero();
-        for(int i = 0; i < sp.nps; i++) {
-            V3d error = sigmasZ.col(i) - meanZ;
-            Pz += sp.getPw(i) * error * error.transpose();
-            V9d meanError = sigmaPts.col(i) - x;
-            Pxy += sp.getPw(i) * meanError * error.transpose();
-        }
-
-        Pz = 0.5 * (Pz + Pz.transpose());
-        Pz = ensurePositiveDefinite(Pz);
-        
-        
-        V3d y = z - meanZ;
-        MPxyK3d K = computeKalmanGain(Pxy, Pz);
-
-        x += K * y;
+        std::cout << "\n\nState after update:" << std::endl;
+        formatMatrix(x);
 
 
-        M9d KPzKt = K * Pz * K.transpose();
-        M9d newP = P - KPzKt;
-        newP = 0.5 * (newP + newP.transpose());
-
-        P = ensurePositiveDefinite(newP);
-
-        // std::cout << x(0) << "\t" << x(3) << "\t" << x(6) << std::endl;
-        // std::cout << P << std::endl << std::endl;
+        // std::cout << "\n\nTrace of new coraviance: : " << P.trace() << std::endl;
+        // std::cout << "Covariance (P) after update:" << std::endl;
+        // formatMatrix(P);
 
         return x;
     }
 
 
+    V4d measurementModel(const V6d &point) {
+        // converts global velocity into
+        // local displacement and angular velocity 
+        V3d globalVelocities = point.tail<3>();
 
-    V6d measurementModel(const V9d &point) {
-        V3d localDisplacement = point.segment<3>(3);
-        V3d localVelocity = point.segment<3>(6);
 
-        return point.tail<6>();
-    }
-    // if velocity was not updated
-    V3d measurementModelDisplacement(const V9d &point) {
-        V3d localDisplacement = point.segment<3>(3);
-        V3d localVelocity = point.segment<3>(6);
+        double deltaTheta = globalVelocities(2) * dt; // find local orientation change
 
-        return point.segment<3>(3);
+        
+        double c;
+        double s;
+        if(deltaTheta < 0.0005) { // approximate trig if theta if too small
+            c = dt - std::pow(deltaTheta, 2) * dt / 6.0;
+            s = -dt * deltaTheta / 2.0;
+        } else {
+            c = sin(deltaTheta) / globalVelocities(2);
+            s = (cos(deltaTheta) - 1.0) / globalVelocities(2);
+        }
+
+        M3d exponentiate;
+        exponentiate <<
+            c, s, 0,
+            -s, c, 0,
+            0, 0, dt;
+
+        V3d localDisplacements = exponentiate * globalVelocities;
+
+        V4d result;
+        result <<
+            localDisplacements(0), localDisplacements(1), localDisplacements(2),
+            globalVelocities(2);
+        
+        return result;
     }
 
 
@@ -174,99 +179,109 @@ public:
         ============
     
     */
-    V9d
+    void
     predict() {
         auto sigmaPoints = this->generateSigmaPoints();
 
         // transformed sigma points;
-        MV9d tsp;
+        MV6d tsp;
 
-        V9d predictedMean = V9d::Zero();
+        // std::cout << "\n\nTransformed sigma points:" << std::endl;
+        V6d predictedMean = V6d::Zero();
         for(int i = 0; i < sp.nps; i++) {
             tsp.col(i) = this->processModel(sigmaPoints.col(i));
+            // formatMatrix(tsp.col(i).transpose());
             predictedMean += sp.getw(i) * tsp.col(i);
         }
 
-        M9d predictedCovariance = Q;
+        M6d predictedCovariance = M6d::Zero();
         for(int i = 0; i < sp.nps; i++) {
             auto error = tsp.col(i) - predictedMean;
             predictedCovariance += sp.getPw(i) * error * error.transpose();
         }
+        predictedCovariance += computeQ(predictedCovariance);
 
         predictedCovariance = 0.5 * (predictedCovariance + predictedCovariance.transpose());
         predictedCovariance = ensurePositiveDefinite(predictedCovariance);
 
         x = predictedMean;
         P = predictedCovariance;
-
-        return x;
     }
 
-    V9d processModel(const V9d &point) {
-        V3d localDelta = point.segment<3>(3).eval();
+    M6d computeQ(M6d &cov) {
+        M6d Q = M6d::Identity() * 0.000009;
+        Q(3, 3) = Q(4, 4) = 0.0625; // global velocity std ~0.2
+        Q(0, 3) = Q(3, 0) = 0.95 * std::sqrt(P(0, 0) * P(3, 3)); // keep correlation ~ 95%
+        Q(1, 4) = Q(4, 1) = 0.95 * std::sqrt(P(1, 1) * P(4, 4)); // keep correlation ~ 95%
+
+        return Q;
+    }
+
+    V6d processModel(const V6d &point) {
+        V3d globalVelocities = point.tail<3>();
         // if(useVelocity) localDelta = point.segment<3>(6).eval() * dt; // if velocity was updated use velocity * time
         // else localDelta = point.segment<3>(3).eval(); // else use constant displacement
 
+        double deltaTheta = globalVelocities(2) * dt;
 
         double c;
         double s;
-        if(localDelta.z() < 0.0005) { // approximate trig if theta if too small
-            c = 1.0 - std::pow(localDelta.z(), 2) / 6.0;
-            s = -localDelta.z() / 2.0;
+        if(deltaTheta < 0.0005) { // approximate trig if theta if too small
+            c = dt - std::pow(deltaTheta, 2) * dt / 6.0;
+            s = -dt * deltaTheta / 2.0;
         } else {
-            c = sin(localDelta.z()) / localDelta.z();
-            s = (cos(localDelta.z()) - 1.0) / localDelta.z();
+            c = sin(deltaTheta) / globalVelocities(2);
+            s = (cos(deltaTheta) - 1.0) / globalVelocities(2);
         }
 
         M3d exponentiate;
         exponentiate <<
-            c, s, 0,
-            -s, c, 0,
-            0, 0, 1;
+            c, -s, 0,
+            s, c, 0,
+            0, 0, dt;
 
-        V3d newGlobalPosition = rotatePose(point.z()) * exponentiate * localDelta + point.head<3>();
+        // std::cout << "\n\n\n" << std::endl;
+        // formatMatrix(exponentiate);
+        // std::cout << std::endl;
+        // formatMatrix(globalVelocities);
 
-        V9d result;
+
+        V3d newGlobalPosition = exponentiate * globalVelocities + point.head<3>();
+
+        V6d result;
         result <<
             // new position calculated from spoint's velocities
             newGlobalPosition(0), newGlobalPosition(1), newGlobalPosition(2),
             // local deltas are what velocity if moved dt
-            localDelta(0), localDelta(1), localDelta(2),
-            // keep velocities constant
-            point(6), point(7), point(8);
+            globalVelocities(0), globalVelocities(1), globalVelocities(2);
 
         return result;
     }
 
-    MV9d generateSigmaPoints() {
-        MV9d result = MV9d::Zero();
+    MV6d generateSigmaPoints() {
+        MV6d result = MV6d::Zero();
 
-        M9d scaledSqrt = matrixSqrt(sp.scale * P);
+        M6d scaledSqrt = matrixSqrt(sp.scale * P);
+        // std::cout << "\n\nScaled covariance square rooted: " << std::endl;
+        // formatMatrix(scaledSqrt);
 
+        // std::cout << "\n\nGenerated sigma points:" << std::endl;
         result.col(0) = x;
         for(int i = 1; i < sp.n + 1; i++) {
             result.col(i) = x + scaledSqrt.col(i - 1);
             result.col(i + sp.n) = x - scaledSqrt.col(i - 1);
+            // std::cout << "\t(" << i << ") ";
+            // formatMatrix(result.col(i).transpose());
         }
 
         return result;
     }
 
-    MPxyKd computeKalmanGain(const MPxyKd& Pxy, const M6d& Pz) {
-        Eigen::FullPivLU<M6d> lu(Pz);
+    M6x4 computeKalmanGain(const M6x4& Pxy, const M4d& Pz) {
+        Eigen::FullPivLU<M4d> lu(Pz);
         if (!lu.isInvertible()) {
             // regularize
-            M6d regularized = Pz + 1e-6f * M6d::Identity();
-            return Pxy * regularized.inverse();
-        }
-        return Pxy * lu.inverse();
-    }
-
-    MPxyK3d computeKalmanGain(const MPxyK3d& Pxy, const M3d& Pz) {
-        Eigen::FullPivLU<M3d> lu(Pz);
-        if (!lu.isInvertible()) {
-            // regularize
-            M3d regularized = Pz + 1e-6f * M3d::Identity();
+            M4d regularized = Pz + 1e-6 * M4d::Identity();
             return Pxy * regularized.inverse();
         }
         return Pxy * lu.inverse();

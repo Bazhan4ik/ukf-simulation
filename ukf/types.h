@@ -3,23 +3,40 @@
 
 
 // ukf
-using V9d = Eigen::Vector<double, 9>;
-using V6d = Eigen::Vector<double, 6>;
+using V9d = Eigen::Vector<double, 9>; // measurement vector
+using V6d = Eigen::Vector<double, 6>; // state vector
+using V4d = Eigen::Vector<double, 4>; // current measurement vector with no distance and velocities
+
+using M6d = Eigen::Matrix<double, 6, 6>; // Q, P
+// using M9d = Eigen::Matrix<double, 9, 9>;    // R
+using M4d = Eigen::Matrix<double, 4, 4>;    // R
+                                            // right now only 4 displacements and gyro, but then velocities and ultrasonic ranges
+
+using MV6d = Eigen::Matrix<double, 6, 19>; // sigma points
+using MV4d = Eigen::Matrix<double, 4, 19>; // measurements from sigma pts
+
+
+using M6x4 = Eigen::Matrix<double, 6, 4>;   // Kalman gain
+                                            // cross covariance
+
+
+
+
+using M3d = Eigen::Matrix<double, 3, 3>; // rotation
+
+
 using V3d = Eigen::Vector<double, 3>;
-using V4d = Eigen::Vector<double, 4>;
 using V2d = Eigen::Vector<double, 2>;
 // sigma point matrix
 using MV9d = Eigen::Matrix<double, 9, 19>;
-using MV6d = Eigen::Matrix<double, 6, 19>;
-using MV3d = Eigen::Matrix<double, 3, 19>; // no velocity measurement sigma points
-using M9d = Eigen::Matrix<double, 9, 9>;
 using M6d = Eigen::Matrix<double, 6, 6>;
-using M3d = Eigen::Matrix<double, 3, 3>;
 using M2d = Eigen::Matrix<double, 2, 2>;
 // cross covariance + kalman gain
 using MPxyKd = Eigen::Matrix<double, 9, 6>;
 using MPxyK3d = Eigen::Matrix<double, 9, 3>; // no velocity kalman gain or cross covariance
 // ukf
+
+using Mx = Eigen::MatrixXd;
 
 
 M3d rotatePose(double phi) {

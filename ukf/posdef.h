@@ -1,23 +1,5 @@
 #include "types.h"
 
-M9d ensurePositiveDefinite(const M9d& cov) {
-    Eigen::SelfAdjointEigenSolver<M9d> eigenSolver(cov);
-    if (eigenSolver.info() != Eigen::Success) { // not positive definite
-        // regularize
-        return cov + 1e-6 * M9d::Identity();
-    }
-    
-    auto eigenvals = eigenSolver.eigenvalues();
-    const double minEigenval = 1e-8;
-    
-    if (eigenvals.minCoeff() < minEigenval) {
-        eigenvals = eigenvals.cwiseMax(minEigenval);
-        auto V = eigenSolver.eigenvectors();
-        return V * eigenvals.asDiagonal() * V.transpose();
-    }
-    
-    return cov;
-}
 M6d ensurePositiveDefinite(const M6d& cov) {
     Eigen::SelfAdjointEigenSolver<M6d> eigenSolver(cov);
     if (eigenSolver.info() != Eigen::Success) { // not positive definite
@@ -36,12 +18,11 @@ M6d ensurePositiveDefinite(const M6d& cov) {
     
     return cov;
 }
-
-M3d ensurePositiveDefinite(const M3d& cov) {
-    Eigen::SelfAdjointEigenSolver<M3d> eigenSolver(cov);
+M4d ensurePositiveDefinite(const M4d& cov) {
+    Eigen::SelfAdjointEigenSolver<M4d> eigenSolver(cov);
     if (eigenSolver.info() != Eigen::Success) { // not positive definite
         // regularize
-        return cov + 1e-6 * M3d::Identity();
+        return cov + 1e-6 * M4d::Identity();
     }
     
     auto eigenvals = eigenSolver.eigenvalues();

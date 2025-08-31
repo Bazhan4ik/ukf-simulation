@@ -16,9 +16,9 @@ public:
     std::vector<double> Pweights;
 
     SigmaPoints() {
-        n = 9;
+        n = 6;
         alpha = 0.1;
-        kappa = 0.0;
+        kappa = 4.0;
         beta = 2.0;
         lambda = alpha * alpha * (n + kappa) - n;
         nps = 1 + 2 * n;

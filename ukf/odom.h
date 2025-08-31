@@ -17,6 +17,11 @@ public:
         
         // Global displacement vector
         V2d globalDelta;
+
+        if(deltaTheta == 0.0) {
+            current(0) += z(0);
+            return current;
+        }
         
         // if the robot moves straight (doesn't rotate)
         if (std::abs(deltaTheta) < 0.0005) {

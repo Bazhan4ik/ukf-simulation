@@ -6,7 +6,7 @@
 
 class DataReader {
 public:
-    static std::vector<std::vector<double>> readDataFile(const std::string& filename) {
+    static std::vector<std::vector<double>> readDataFile(const std::string& filename, char sep) {
         std::vector<std::vector<double>> data;
         std::ifstream file(filename);
         
@@ -31,7 +31,7 @@ public:
             std::string cell;
             
             // Parse comma-separated values
-            while (std::getline(ss, cell, '\t')) {
+            while (std::getline(ss, cell, sep)) {
                 try {
                     // Remove any whitespace
                     cell.erase(0, cell.find_first_not_of(" \t"));
@@ -104,8 +104,6 @@ public:
         }
         
         file.close();
-        std::cout << "X-Y trajectory exported to " << filename << std::endl;
-        std::cout << "Copy and paste the contents into Desmos!" << std::endl;
     }
     
     // Export time-based data (time vs any parameter)
