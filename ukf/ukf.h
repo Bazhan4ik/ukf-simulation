@@ -50,10 +50,6 @@ public:
         x <<
             0.0, 0.0, 0.0,
             0.0, 0.0, 0.0;
-
-        std::cout << "\n\n\n\nSigma points scale: " << sp.scale << std::endl;
-        std::cout << "Initial covariance trace: " << P.trace() << std::endl;
-        std::cout << "Initial covariance norm: " << P.norm() << std::endl << std::endl << std::endl;
     };
 
 
@@ -71,18 +67,10 @@ public:
         V3d meanZ = V3d::Zero();
 
         MV3d sigmasZ = MV3d::Zero();
-        // std::cout << "\n\nMeasurements from sigma points: " << std::endl;
         for(int i = 0; i < sp.nps; i++) {
             sigmasZ.col(i) = measurementModel(sigmaPts.col(i));
-
-            // std::cout << "\t(" << i + 1 << ") ";
-            // formatMatrix(sigmasZ.col(i).transpose());
-
             meanZ += sp.getw(i) * sigmasZ.col(i);
         }
-
-        std::cout << "\n\nMean Z at update step: " << std::endl;
-        formatMatrix(meanZ);
 
         M3d Pz = R.eval();
         M6x3 Pxy = M6x3::Zero();
@@ -97,38 +85,16 @@ public:
         Pz = ensurePositiveDefinite(Pz);
         Pz = 0.5 * (Pz + Pz.transpose());
 
-        std::cout << "\n\nInnovation covariance:" << std::endl;
-        formatMatrix(Pz);
-
-        std::cout << "\n\nCross covariance" << std::endl;
-        formatMatrix(Pxy);
-        
-        
         V3d y = z - meanZ;
         M6x3 K = computeKalmanGain(Pxy, Pz);
 
-        std::cout << "\n\nInnovation:" << std::endl;
-        formatMatrix(y);
-
-        std::cout << "\n\nKalman gain:" << std::endl;
-        formatMatrix(K);
-
         x += K * y;
-
 
         M6d KPzKt = K * Pz * K.transpose();
         M6d newP = P - KPzKt;
         newP = 0.5 * (newP + newP.transpose());
 
         P = ensurePositiveDefinite(newP);
-
-        std::cout << "\n\nState after update:" << std::endl;
-        formatMatrix(x);
-
-
-        // std::cout << "\n\nTrace of new coraviance: : " << P.trace() << std::endl;
-        // std::cout << "Covariance (P) after update:" << std::endl;
-        // formatMatrix(P);
 
         return x;
     }
@@ -183,11 +149,9 @@ public:
         // transformed sigma points;
         MV6d tsp;
 
-        // std::cout << "\n\nTransformed sigma points:" << std::endl;
         V6d predictedMean = V6d::Zero();
         for(int i = 0; i < sp.nps; i++) {
             tsp.col(i) = this->processModel(sigmaPoints.col(i));
-            // formatMatrix(tsp.col(i).transpose());
             predictedMean += sp.getw(i) * tsp.col(i);
         }
 
@@ -197,10 +161,6 @@ public:
             predictedCovariance += sp.getPw(i) * error * error.transpose();
         }
         predictedCovariance += computeQ(predictedCovariance);
-
-        std::cout << "\n\nCovariance (P) after predict: " << std::endl;
-        formatMatrix(predictedCovariance);
-
 
         predictedCovariance = 0.5 * (predictedCovariance + predictedCovariance.transpose());
         predictedCovariance = ensurePositiveDefinite(predictedCovariance);
@@ -222,18 +182,14 @@ public:
         return Q;
     }
 
-    int skipped = 0;
     V6d processModel(const V6d &point) {
         V3d globalVelocities = point.tail<3>();
-        // if(useVelocity) localDelta = point.segment<3>(6).eval() * dt; // if velocity was updated use velocity * time
-        // else localDelta = point.segment<3>(3).eval(); // else use constant displacement
 
         double deltaTheta = globalVelocities(2) * dt;
 
         double c;
         double s;
         if(fabs(deltaTheta) < 0.00005) { // approximate trig if theta if too small
-            skipped++;
             c = dt - std::pow(deltaTheta, 2) * dt / 6.0;
             s = -dt * deltaTheta / 2.0;
         } else {
@@ -246,12 +202,6 @@ public:
             c, -s, 0,
             s, c, 0,
             0, 0, dt;
-
-        // std::cout << "\n\n\n" << std::endl;
-        // formatMatrix(exponentiate);
-        // std::cout << std::endl;
-        // formatMatrix(globalVelocities);
-
 
         V3d newGlobalPosition = exponentiate * globalVelocities + point.head<3>();
 
@@ -269,16 +219,11 @@ public:
         MV6d result = MV6d::Zero();
 
         M6d scaledSqrt = matrixSqrt(sp.scale * P);
-        std::cout << "\n\nScaled covariance square rooted: " << std::endl;
-        formatMatrix(scaledSqrt);
 
-        std::cout << "\n\nGenerated sigma points:" << std::endl;
         result.col(0) = x;
         for(int i = 1; i < sp.n + 1; i++) {
             result.col(i) = x + scaledSqrt.col(i - 1);
             result.col(i + sp.n) = x - scaledSqrt.col(i - 1);
-            std::cout << "\t(" << i << ") ";
-            formatMatrix(result.col(i).transpose());
         }
 
         return result;
