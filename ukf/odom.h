@@ -11,6 +11,7 @@ public:
         
         // Local displacement vector
         V2d localDelta(z(0), z(1));
+
         
         // Current global orientation
         double globalTheta = current.z();
@@ -18,13 +19,13 @@ public:
         // Global displacement vector
         V2d globalDelta;
 
-        if(deltaTheta == 0.0) {
-            current(0) += z(0);
-            return current;
-        }
+        // if(deltaTheta == 0.0) {
+        //     current(0) += z(0);
+        //     return current;
+        // }
         
         // if the robot moves straight (doesn't rotate)
-        if (std::abs(deltaTheta) < 0.0005) {
+        if (std::abs(deltaTheta) < 0.0001) {
             // Taylor series approximation for small angles
             // R ≈ I - θ*[0 -1; 1 0] - θ²/2*I + θ³/6*[0 -1; 1 0]
             // Simplified to: R ≈ [1-θ²/6, -θ/2; θ/2, 1-θ²/6]

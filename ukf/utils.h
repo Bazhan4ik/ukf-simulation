@@ -71,7 +71,7 @@ void ostate(V9d &state, int n) {
 
 
 
-void savePointData(std::vector<std::vector<double>> &p1, std::vector<std::vector<double>> &p2, const V3d &o, const V9d &ukf) {
+void savePointData(std::vector<std::vector<double>> &p1, std::vector<std::vector<double>> &p2, const V3d &o, const V6d &ukf) {
     std::vector<double> x;
     x.emplace_back(o.x());
     x.emplace_back(o.y());

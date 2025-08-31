@@ -9,20 +9,18 @@ using V4d = Eigen::Vector<double, 4>; // current measurement vector with no dist
 
 using M6d = Eigen::Matrix<double, 6, 6>; // Q, P
 // using M9d = Eigen::Matrix<double, 9, 9>;    // R
-using M4d = Eigen::Matrix<double, 4, 4>;    // R
+using M3d = Eigen::Matrix<double, 3, 3>;    // R
                                             // right now only 4 displacements and gyro, but then velocities and ultrasonic ranges
 
 using MV6d = Eigen::Matrix<double, 6, 19>; // sigma points
-using MV4d = Eigen::Matrix<double, 4, 19>; // measurements from sigma pts
+using MV3d = Eigen::Matrix<double, 3, 19>; // measurements from sigma pts
 
 
-using M6x4 = Eigen::Matrix<double, 6, 4>;   // Kalman gain
+using M6x3 = Eigen::Matrix<double, 6, 3>;   // Kalman gain
                                             // cross covariance
 
 
 
-
-using M3d = Eigen::Matrix<double, 3, 3>; // rotation
 
 
 using V3d = Eigen::Vector<double, 3>;

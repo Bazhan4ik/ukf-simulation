@@ -18,11 +18,11 @@ M6d ensurePositiveDefinite(const M6d& cov) {
     
     return cov;
 }
-M4d ensurePositiveDefinite(const M4d& cov) {
-    Eigen::SelfAdjointEigenSolver<M4d> eigenSolver(cov);
+M3d ensurePositiveDefinite(const M3d& cov) {
+    Eigen::SelfAdjointEigenSolver<M3d> eigenSolver(cov);
     if (eigenSolver.info() != Eigen::Success) { // not positive definite
         // regularize
-        return cov + 1e-6 * M4d::Identity();
+        return cov + 1e-6 * M3d::Identity();
     }
     
     auto eigenvals = eigenSolver.eigenvalues();
