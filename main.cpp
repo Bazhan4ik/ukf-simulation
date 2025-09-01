@@ -13,6 +13,7 @@
 
 int main() {
     std::vector<std::vector<double>> data = DataReader::readDataFile("test.txt", ' ');
+    std::vector<std::vector<double>> jerkyData = DataReader::readDataFile("more-data.txt", ' ');
     std::vector<std::vector<double>> dataActual = DataReader::readDataFile("z.txt", '\t');
     if (data.empty()) {
         return -1;
@@ -26,7 +27,7 @@ int main() {
     std::vector<std::vector<double>> points;
     std::vector<std::vector<double>> points2;
 
-    auto initial = dataActual.at(0);
+    auto initial = jerkyData.at(0);
     ukf.x(0) = initial.at(0);
     ukf.x(1) = initial.at(1);
     ukf.x(2) = initial.at(2);
@@ -37,31 +38,109 @@ int main() {
 
     // odom.update({ initial.at(0), initial.at(1), initial.at(2) + M_PI / 2.0 });
 
-    for(size_t i = 1; i < dataActual.size() && i < 500; i++) {
-        auto p = dataActual.at(i);
-        double dx = p.at(0); double vx = p.at(3);
-        double dy = p.at(1); double vy = p.at(4);
-        double dtheta = p.at(2); double vtheta = p.at(5);
+    int dist = 0;
+    for(size_t i = 1; i < jerkyData.size() && i < 900; i++) {
+        auto p = jerkyData.at(i);
+        double dx = p.at(0);
+        double dy = p.at(1);
+        double dtheta = p.at(2);
 
-        V4d zd { dx, dy, dtheta, vtheta };
-        V6d zv { dx, dy, dtheta, vx, vy, vtheta };
+        V3d zd { dx, dy, dtheta };
 
-        auto o = odom.update(zd.head<3>());
+        auto o = odom.update(zd);
 
         ukf.predict();
 
-        ukf.update(zd.head<3>());
+        ukf.update(zd);
 
-        std::cout << std::endl;
-        formatMatrix(o.transpose());
-        formatMatrix(ukf.x.transpose());
+        // std::cout << std::endl;
+        // formatMatrix(o.transpose());
+        // formatMatrix(ukf.x.transpose());
+        if(dist++ % 8 == 0) {
+            savePointData(points, points2, o, ukf.x);
+        }
+    }
 
-        savePointData(points, points2, o, ukf.x);
+    for(size_t i = 1; i < jerkyData.size() && i < 900; i++) {
+        auto p = jerkyData.at(i);
+        double dx = p.at(0);
+        double dy = p.at(1);
+        double dtheta = p.at(2);
+
+        dist += dx;
+
+        V3d zd { dx, dy, dtheta };
+
+        auto o = odom.update(zd * -1);
+
+        ukf.predict();
+
+        ukf.update(zd * -1);
+
+        // std::cout << std::endl;
+        // formatMatrix(o.transpose());
+        // formatMatrix(ukf.x.transpose());
+
+        if(dist++ % 8 == 0) {
+            savePointData(points, points2, o, ukf.x);
+        }
+    }
+
+    for(size_t i = 1; i < dataActual.size() && i < 900; i++) {
+        auto p = dataActual.at(i);
+        double dx = p.at(0);
+        double dy = p.at(1);
+        double dtheta = p.at(2);
+
+        dist += dx;
+
+        V3d zd { dx, dy, dtheta };
+
+        auto o = odom.update(zd * -1);
+
+        ukf.predict();
+
+        ukf.update(zd * -1);
+
+        // std::cout << std::endl;
+        // formatMatrix(o.transpose());
+        // formatMatrix(ukf.x.transpose());
+
+        if(dist++ % 8 == 0) {
+            savePointData(points, points2, o, ukf.x);
+        }
+    }
+
+    for(size_t i = 1; i < jerkyData.size() && i < 900; i++) {
+        auto p = jerkyData.at(i);
+        double dx = p.at(0);
+        double dy = p.at(1);
+        double dtheta = p.at(2);
+
+        dist += dx;
+
+        V3d zd { dx, dy, dtheta };
+
+        auto o = odom.update(zd * -1);
+
+        ukf.predict();
+
+        ukf.update(zd * -1);
+
+        // std::cout << std::endl;
+        // formatMatrix(o.transpose());
+        // formatMatrix(ukf.x.transpose());
+
+        if(dist++ % 8 == 0) {
+            savePointData(points, points2, o, ukf.x);
+        }
     }
 
     std::cout << "\n\nEnd: " << std::endl;
     formatMatrix(odom.current.transpose());
     formatMatrix(ukf.x.transpose());
+
+    std::cout << dist;
 
     DesmosExporter::exportXYTrajectory(points, "./../output/odom.txt");
     DesmosExporter::exportXYTrajectory(points2, "./../output/ukft.txt");

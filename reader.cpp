@@ -50,8 +50,7 @@ public:
                 }
             }
             
-            // Only add rows with 6 values (as expected for your data format)
-            if (row.size() == 6) {
+            if (row.size() == 6 || row.size() == 3) {
                 data.push_back(row);
             } else {
                 std::cerr << "Warning: Line " << lineNumber 
