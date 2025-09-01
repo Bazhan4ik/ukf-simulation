@@ -41,9 +41,10 @@ M3d rotatePose(double phi) {
     double c = cos(phi);
     double s = sin(phi);
     M3d m;
+    // counterclockwise
     m <<
-        c, s, 0,
-        -s, c, 0,
+        c, -s, 0,
+        s, c, 0,
         0, 0, 1;
     return m;
 }
