@@ -10,6 +10,8 @@
 #include "ukf/odom.h"
 #include "ukf/utils.h"
 
+#include "range-localization/range.h"
+
 
 int main() {
     std::vector<std::vector<double>> data = DataReader::readDataFile("test.txt", ' ');
@@ -22,50 +24,23 @@ int main() {
     UKF ukf;
     Odometry odom;
 
-    ukf.sp.outputParameters();
+    Map m;
+
+    // double dist = m.detectDistance(V2d { 60, 40 }, M_PI + 41.5 * M_PI / 180.0);
+    double dist = m.detectDistance(V2d { 60, 27 }, M_PI);
+    std::cout << dist << std::endl;
+
+
+
+    // ukf.sp.outputParameters();
 
     std::vector<std::vector<double>> points;
     std::vector<std::vector<double>> points2;
 
-    auto initial = jerkyData.at(0);
-    ukf.x(0) = initial.at(0);
-    ukf.x(1) = initial.at(1);
-    ukf.x(2) = initial.at(2);
-    // ukf.x(2) = initial.at(2) + M_PI / 2.0;
-    ukf.x(3) = initial.at(0);
-    ukf.x(4) = initial.at(1);
-    ukf.x(5) = initial.at(2);
 
-    // odom.update({ initial.at(0), initial.at(1), initial.at(2) + M_PI / 2.0 });
 
-    int dist = 0;
-    for(size_t i = 1; i < jerkyData.size() && i < 900; i++) {
-        auto p = jerkyData.at(i);
-        double dx = p.at(0);
-        double dy = p.at(1);
-        double dtheta = p.at(2);
 
-        V3d zd { dx, dy, dtheta };
 
-        auto o = odom.update(zd);
-
-        ukf.predict();
-
-        ukf.update(zd);
-
-        // std::cout << std::endl;
-        // formatMatrix(o.transpose());
-        // formatMatrix(ukf.x.transpose());
-        if(dist++ % 8 == 0) {
-            savePointData(points, points2, o, ukf.x);
-        }
-    }
-
-    std::cout << "\n\nEnd: " << std::endl;
-    formatMatrix(odom.current.transpose());
-    formatMatrix(ukf.x.transpose());
-
-    std::cout << dist;
 
     DesmosExporter::exportXYTrajectory(points, "./../output/odom.txt");
     DesmosExporter::exportXYTrajectory(points2, "./../output/ukft.txt");
