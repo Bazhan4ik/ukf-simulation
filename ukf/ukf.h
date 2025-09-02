@@ -25,11 +25,11 @@ public:
     M3d R;
 
     UKF() {
-        P = M6d::Identity() * 0.0001;
+        P = M6d::Identity() * 0.001;
         Q = M6d::Identity() * 0.0001;
 
         // double std = 0.005;
-        double std = 0.009;
+        double std = 0.1;
 
         Q(0,0) = P(0, 0) = pow(std, 2);
         Q(1,1) = P(1, 1) = pow(std, 2);
@@ -41,7 +41,7 @@ public:
 
         R = M3d::Zero();
         R.diagonal() <<
-            7.5e-4, 7.5e-4, 1e-8;
+            1e-2, 1e-2, 1e-8;
         x <<
             0.0, 0.0, 0.0,
             0.0, 0.0, 0.0;

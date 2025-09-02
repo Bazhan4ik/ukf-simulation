@@ -12,8 +12,8 @@ using M6d = Eigen::Matrix<double, 6, 6>; // Q, P
 using M3d = Eigen::Matrix<double, 3, 3>;    // R
                                             // right now only 4 displacements and gyro, but then velocities and ultrasonic ranges
 
-using MV6d = Eigen::Matrix<double, 6, 19>; // sigma points
-using MV3d = Eigen::Matrix<double, 3, 19>; // measurements from sigma pts
+using MV6d = Eigen::Matrix<double, 6, 13>; // sigma points
+using MV3d = Eigen::Matrix<double, 3, 13>; // measurements from sigma pts
 
 
 using M6x3 = Eigen::Matrix<double, 6, 3>;   // Kalman gain
