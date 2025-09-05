@@ -1,3 +1,4 @@
+#pragma once
 #include "../ukf/types.h"
 
 class Map {

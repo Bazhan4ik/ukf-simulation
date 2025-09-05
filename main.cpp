@@ -85,32 +85,31 @@ double rangeSensorVariance(double zhit, double z) {
 
 
 int main() {
-    std::vector<std::vector<double>> data = DataReader::readDataFile("test.txt", ' ');
-    std::vector<std::vector<double>> jerkyData = DataReader::readDataFile("more-data.txt", ' ');
-    std::vector<std::vector<double>> dataActual = DataReader::readDataFile("z.txt", '\t');
+    // std::vector<std::vector<double>> data = DataReader::readDataFile("test.txt", ' ');
+    // std::vector<std::vector<double>> jerkyData = DataReader::readDataFile("more-data.txt", ' ');
+    // std::vector<std::vector<double>> dataActual = DataReader::readDataFile("z.txt", '\t');
     std::vector<std::vector<double>> distanceData = DataReader::readDataFile("distance-data.txt", ' ');
-    if (data.empty()) {
-        return -1;
-    }
 
+
+    Map m;
     UKF ukf;
     Odometry odom;
 
     odom.current = V3d { 23.25, 23.25, M_PI / 2.0 };
     ukf.x = V6d { 23.25, 23.25, M_PI / 2.0, 0.0, 0.0, 0.0 };
 
-    Map m;
 
     std::vector<std::vector<double>> points;
     std::vector<std::vector<double>> points2;
 
 
-    for(int i = 0; i < distanceData.size() && i < 5; i++) {
+    for(int i = 0; i < distanceData.size() && i < 9995; i++) {
         auto p = distanceData.at(i);
         auto dx = p.at(0); auto dy = p.at(1); auto dtheta = p.at(2);
         auto s1 = p.at(3); auto s2 = p.at(4); auto s3 = p.at(5);
 
         V3d z { dx, dy, dtheta };
+        V6d zd { dx, dy, dtheta, s1, s2, s3 };
         odom.update(z);
 
         // find robot position, given distance sensor measurements
@@ -126,48 +125,22 @@ int main() {
         double zhit3 = mz3.first;
         s3 += 6.3125;
 
+        auto mm = ukf.measurementModel(ukf.x);
 
-
-        std::cout << "\nZ hit:\t" << zhit << "\t\t";
-        std::cout << zhit2 << "\t";
-        std::cout << zhit3 << std::endl;
-
-        std::cout << "Z:\t" << s1 << "\t\t";
-        std::cout << s2 << "\t";
-        std::cout << s3 << std::endl;
-
-        // std::cout << "p(z, zhit):\t" << rangeSensorVariance(zhit, s1) << "\t\t";
-        // std::cout << rangeSensorVariance(zhit2, s2) << "\t";
-        // std::cout << rangeSensorVariance(zhit3, s3) << std::endl;
-
-        std::cout << "Points: " << std::endl;
-        std::cout << "\t"; formatMatrix(mz.second.transpose());
-        std::cout << "\t"; formatMatrix(mz2.second.transpose());
-        std::cout << "\t"; formatMatrix(mz3.second.transpose());
-
-        std::cout << "Pose: ";
-        formatMatrix(odom.current.transpose());
-
-
-
-
+        // std::cout << "Hits: " << zhit << "\t" << zhit2 << "\t" << zhit3 << std::endl;
+        // std::cout << "Measurement model: "; formatMatrix(mm.transpose());
 
 
 
 
         
 
-        // ukf.predict();
+        ukf.predict();
 
-        // ukf.update(z);
-
-
+        ukf.update(zd);
 
 
 
-
-
-        odom.update(z);
         if(i % 4 == 0) {
             savePointData(points, points2, odom.current, ukf.x);
         }

@@ -3,6 +3,7 @@
 #include "posdef.h"
 #include "types.h"
 #include "utils.h"
+#include "../range-localization/range.h"
 
 
 
@@ -11,7 +12,8 @@ class UKF {
 public:
     // state
     V6d x;
-        // local displacements: x, y, theta
+        // global position: x, y, theta
+        // global displacementsn: dx, dy, dtheta
 
     // sigma points
     SigmaPoints sp;
@@ -22,26 +24,32 @@ public:
     M6d Q;
 
     // measurement model:
-    M3d R;
+    //      dx, dy, dtheta
+    //      distance sensor x3
+    M6d R;
+
+    Map m;
 
     UKF() {
-        P = M6d::Identity() * 0.001;
+        P = M6d::Identity() * 0.09;
         Q = M6d::Identity() * 0.0001;
 
         // double std = 0.005;
-        double std = 0.1;
+        double std = 0.001;
 
-        Q(0,0) = P(0, 0) = pow(std, 2);
-        Q(1,1) = P(1, 1) = pow(std, 2);
-        Q(3,3) = P(3, 3) = pow(std, 2);
-        Q(4,4) = P(4, 4) = pow(std, 2);
+
+
+        Q(0,0) = pow(std, 2);
+        Q(1,1) = pow(std, 2);
+        Q(3,3) = pow(std, 2);
+        Q(4,4) = pow(std, 2);
 
         Q(2,2) = P(2, 2) = pow(0.0004, 2);
         Q(5, 5) = P(5, 5) = pow(0.0004, 2);
 
-        R = M3d::Zero();
+        R = M6d::Zero();
         R.diagonal() <<
-            1e-2, 1e-2, 1e-8;
+            1e-4, 1e-4, 1e-8, 1e-1, 1e-1, 1e-1;
         x <<
             0.0, 0.0, 0.0,
             0.0, 0.0, 0.0;
@@ -56,28 +64,21 @@ public:
     
     */
     auto
-    update(const V3d &z) {
+    update(const V6d &z) {
         auto sigmaPts = generateSigmaPoints();
 
-        V3d meanZ = V3d::Zero();
+        V6d meanZ = V6d::Zero();
 
-        MV3d sigmasZ = MV3d::Zero();
+        MV6d sigmasZ = MV6d::Zero();
         for(int i = 0; i < sp.nps; i++) {
             sigmasZ.col(i) = measurementModel(sigmaPts.col(i));
             meanZ += sp.getw(i) * sigmasZ.col(i);
         }
 
-        // std::cout << "\n\nPredicted state: " << std::endl;
-        // formatMatrix(x.transpose());
-        // std::cout << "\n\nPredicted covariance: " << std::endl;
-        // formatMatrix(P.transpose());
-        // std::cout << "Measurement sigma points: " << std::endl;
-        // formatMatrix(sigmasZ.transpose());
-
-        M3d Pz = R;
-        M6x3 Pxy = M6x3::Zero();
+        M6d Pz = R;
+        M6d Pxy = M6d::Zero();
         for(int i = 0; i < sp.nps; i++) {
-            V3d error = sigmasZ.col(i) - meanZ;
+            V6d error = sigmasZ.col(i) - meanZ;
             Pz += sp.getPw(i) * error * error.transpose();
             V6d meanError = sigmaPts.col(i) - x;
             Pxy += sp.getPw(i) * meanError * error.transpose();
@@ -87,10 +88,10 @@ public:
         Pz = ensurePositiveDefinite(Pz);
         Pz = 0.5 * (Pz + Pz.transpose());
 
-        V3d y = z - meanZ;
+        V6d y = z - meanZ;
         // std::cout << "Innovation: ";
         // formatMatrix(y.transpose());
-        M6x3 K = computeKalmanGain(Pxy, Pz);
+        M6d K = computeKalmanGain(Pxy, Pz);
 
         x += K * y;
 
@@ -103,16 +104,23 @@ public:
     }
 
 
-    V3d measurementModel(const V6d &point) {
+    V6d measurementModel(const V6d &point) {
         V3d globalVelocities = point.tail<3>();
 
         V3d localDisplacements = rotatePose(-(point(2) - globalVelocities(2))) * globalVelocities;
         // V3d localDisplacements = rotatePose(-(point(2) - globalVelocities(2) * dt)) * globalVelocities * dt;
         
 
-        V3d result;
+        double d1 = m.detectDistance(x.head<2>(), x(2) + M_PI / 2.0).first;
+        double d2 = m.detectDistance(x.head<2>(), x(2) + M_PI).first;
+        double d3 = m.detectDistance(x.head<2>(), x(2) - M_PI / 2.0).first;
+        
+
+
+        V6d result;
         result <<
-            localDisplacements(0), localDisplacements(1), localDisplacements(2);
+            localDisplacements(0), localDisplacements(1), localDisplacements(2),
+            d1, d2, d3;
         
         return result;
     }
@@ -204,11 +212,11 @@ public:
         return result;
     }
 
-    M6x3 computeKalmanGain(const M6x3& Pxy, const M3d& Pz) {
-        Eigen::FullPivLU<M3d> lu(Pz);
+    M6d computeKalmanGain(const M6d& Pxy, const M6d& Pz) {
+        Eigen::FullPivLU<M6d> lu(Pz);
         if (!lu.isInvertible()) {
             // regularize
-            M3d regularized = Pz + 1e-6 * M3d::Identity();
+            M6d regularized = Pz + 1e-6 * M6d::Identity();
             return Pxy * regularized.inverse();
         }
         return Pxy * lu.inverse();
