@@ -1,40 +1,55 @@
 #pragma once
 #include "../ukf/types.h"
 
+
+// field length
+const double full = 144.0;
+// inside offset
+const double off = 0.25;
+// field inner length
+// const double fl = full - off * 2.0;
+const double fl = full;
+
+
+
 class Map {
 public:
     std::vector<std::pair<V2d, V2d>> lines;
 
     Map() {
-        V2d lg1p1 { 46.75, 22.25 };
-        V2d lg1p2 { 49.85, 25.2 };
+        std::vector<V2d> points;
 
-        V2d lg2p1 { 49.85, 25.2 };
-        V2d lg2p2 { 46.75, 28.25 };
-        
-        V2d wall1p1 { 0.0, 0.0 };
-        V2d wall1p2 { 0.0, 144.0 };
+        // leg
+        points.emplace_back(V2d { 46.75, 22.25 });
+        points.emplace_back(V2d { 49.85, 25.2 });
+        points.emplace_back(V2d { 49.85, 25.2 });
+        points.emplace_back(V2d { 46.75, 28.25 });
 
-        V2d wall2p1 { 0.0, 0.0 };
-        V2d wall2p2 { 144.0, 0.0 };
+        // leg left top of the fielt
+        points.emplace_back(V2d { 46.75, fl - 22.25 });
+        points.emplace_back(V2d { 49.85, fl - 25.2 });
+        points.emplace_back(V2d { 49.85, fl - 25.2 });
+        points.emplace_back(V2d { 46.75, fl - 28.25 });
 
-        V2d wall3p1 { 144.0, 0.0 };
-        V2d wall3p2 { 144.0, 144.0 };
+        // left y wall
+        points.emplace_back(V2d { 0.0, 0.0 });
+        points.emplace_back(V2d { 0.0, fl });       
 
-        auto wallpair = std::pair<V2d, V2d> { wall1p1, wall1p2 };
-        auto wall2pair = std::pair<V2d, V2d> { wall2p1, wall2p2 };
-        auto wall3pair = std::pair<V2d, V2d> { wall3p1, wall3p2 };
+        // bottom x wall
+        points.emplace_back(V2d { 0.0, 0.0 });
+        points.emplace_back(V2d { fl, 0.0 });
 
-        auto pair1 = std::pair<V2d, V2d> { lg1p1, lg1p2 };
-        auto pair2 = std::pair<V2d, V2d> { lg2p1, lg2p2 };
+        // right y wall
+        points.emplace_back(V2d { fl, 0.0 });
+        points.emplace_back(V2d { fl, fl });
 
+        // top x wall
+        points.emplace_back(V2d { 0.0, fl });
+        points.emplace_back(V2d { fl, fl });
 
-
-        lines.emplace_back(pair1);
-        lines.emplace_back(pair2);
-        lines.emplace_back(wallpair);
-        lines.emplace_back(wall2pair);
-        lines.emplace_back(wall3pair);
+        for(int i = 0; i < points.size(); i += 2) {
+            lines.emplace_back(std::pair<V2d, V2d> { points.at(i), points.at(i+1) });
+        }
     }
 
     std::pair<double, V2d> detectDistance(V2d position, double theta) {

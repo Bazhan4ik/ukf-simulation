@@ -102,8 +102,10 @@ int main() {
     std::vector<std::vector<double>> points;
     std::vector<std::vector<double>> points2;
 
+    
 
-    for(int i = 0; i < distanceData.size() && i < 9995; i++) {
+
+    for(int i = 0; i < distanceData.size() && i < 1; i++) {
         auto p = distanceData.at(i);
         auto dx = p.at(0); auto dy = p.at(1); auto dtheta = p.at(2);
         auto s1 = p.at(3); auto s2 = p.at(4); auto s3 = p.at(5);
