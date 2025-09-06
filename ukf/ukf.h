@@ -41,7 +41,7 @@ public:
 
         R = M3d::Zero();
         R.diagonal() <<
-            1e-2, 1e-2, 1e-8;
+            1e-6, 1e-6, 1e-10;
         x <<
             0.0, 0.0, 0.0,
             0.0, 0.0, 0.0;
@@ -93,6 +93,7 @@ public:
         M6x3 K = computeKalmanGain(Pxy, Pz);
 
         x += K * y;
+        x = clampState(x);
 
 
         M6d KPzKt = K * Pz * K.transpose();
@@ -147,7 +148,7 @@ public:
         predictedCovariance = 0.5 * (predictedCovariance + predictedCovariance.transpose());
         predictedCovariance = ensurePositiveDefinite(predictedCovariance);
 
-        x = predictedMean;
+        x = clampState(predictedMean);
         P = predictedCovariance;
     }
 
@@ -158,7 +159,7 @@ public:
 
         double c;
         double s;
-        if(fabs(deltaTheta) < 0.00005) { // approximate trig if theta if too small
+        if(fabs(deltaTheta) < 5e-5) { // approximate trig if theta if too small
             // CHECK THE TRANSFORM MATRICES ANDE THREI SIGNS
             c = std::pow(deltaTheta, 2) / 6.0 - 1.0;
             s = dt * deltaTheta / 2.0;
@@ -195,6 +196,9 @@ public:
 
         M6d scaledSqrt = matrixSqrt(sp.scale * P);
 
+        std::cout << "Scaled sqrt: " << std::endl;
+        formatMatrix(scaledSqrt);
+
         result.col(0) = x;
         for(int i = 1; i < sp.n + 1; i++) {
             result.col(i) = x + scaledSqrt.col(i - 1);
@@ -212,5 +216,28 @@ public:
             return Pxy * regularized.inverse();
         }
         return Pxy * lu.inverse();
+    }
+
+    V6d clampState(V6d &state) {
+        if(std::fabs(state.x()) < 1e-8) {
+            state(0) = 0;
+        }
+        if(std::fabs(state.y()) < 1e-8) {
+            state(1) = 0;
+        }
+        if(std::fabs(state.z()) < 1e-16) {
+            state(2) = 0;
+        }
+        if(std::fabs(state(3)) < 1e-8) {
+            state(3) = 0;
+        }
+        if(std::fabs(state(4)) < 1e-8) {
+            state(4) = 0;
+        }
+        if(std::fabs(state(5)) < 1e-16) {
+            state(5) = 0;
+        }
+
+        return state;
     }
 };

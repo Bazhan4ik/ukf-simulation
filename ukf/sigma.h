@@ -17,8 +17,8 @@ public:
 
     SigmaPoints() {
         n = 6;
-        alpha = 0.0001;
-        kappa = 0.0;
+        alpha = 0.001;
+        kappa = 5.0;
         beta = 2.0;
         lambda = alpha * alpha * (n + kappa) - n;
         nps = 1 + 2 * n;

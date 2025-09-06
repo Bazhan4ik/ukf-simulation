@@ -50,7 +50,7 @@ public:
                 }
             }
             
-            if (row.size() == 6 || row.size() == 3) {
+            if (row.size() == 6 || row.size() == 3 || row.size() == 9) {
                 data.push_back(row);
             } else {
                 std::cerr << "Warning: Line " << lineNumber 
